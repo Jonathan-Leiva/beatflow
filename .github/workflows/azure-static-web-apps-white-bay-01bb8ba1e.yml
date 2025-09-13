@@ -1,4 +1,3 @@
-
 name: Azure Static Web Apps CI/CD
 
 on:
@@ -12,7 +11,6 @@ jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
     permissions:
       contents: read
 
@@ -25,18 +23,17 @@ jobs:
           node-version: '20.19.0'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm ci
 
       - name: Build
-        run: npm run build
-        # Ensure your package.json has: "build": "vite build"
+        run: npm run build   # -> generates dist/
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_BAY_01BB8BA1E }}
-          action: "upload"
-          app_location: "/"
-          output_location: "dist"        # <-- IMPORTANT
-          skip_app_build: true           # <-- We already built with Node 20
+          action: upload
+          app_location: /
+          output_location: dist
+          skip_app_build: true
