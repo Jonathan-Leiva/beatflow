@@ -2,64 +2,48 @@ name: Azure Static Web Apps CI/CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
     types: [opened, synchronize, reopened, closed]
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          submodules: true
-          lfs: false
-
-      # Use Node 22 so Vite 7 can build
-      - name: Use Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.12.0'
+          node-version: '20.19.0'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run build
 
-      - name: Build (Vite -> dist)
-        run: npm run build
-
-      # If you have staticwebapp.config.json at repo root, copy it into dist
-      - name: Copy SWA config (optional)
-        run: |
-          if [ -f staticwebapp.config.json ]; then cp staticwebapp.config.json dist/; fi
-
-      - name: Assert token present (safe)
-        run: test -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_BAY_01BB8BA1E }}" || (echo "Token secret is empty"; exit 1)
-
+      # We built already, so point app_location *to the built folder*
+      # and leave output_location empty (this is the documented pattern
+      # when skip_app_build: true).
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_CALM_OCEAN_09A15A01E }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_BAY_01BB8BA1E }}
           action: upload
-          app_location: /
-          output_location: dist
+          app_location: dist     # <- built files folder
+          output_location: ''    # <- empty when skipping app build
           skip_app_build: true
+          production_branch: main
 
   close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_CALM_OCEAN_09A15A01E }}
-          action: "close"
-
+      if: github.event_name == 'pull_request' && github.event.action == 'closed' && !github.event.pull_request.head.repo.fork
+      runs-on: ubuntu-latest
+      steps:
+        - name: Close Pull Request
+          uses: Azure/static-web-apps-deploy@v1
+          with:
+            azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_BAY_01BB8BA1E }}
+            action: close
 
